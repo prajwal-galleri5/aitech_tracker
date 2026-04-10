@@ -410,6 +410,95 @@
                     </div>
                 </div>
 
+                <div x-show="view === 'reports'" x-cloak x-transition:enter="transition opacity-200" class="max-w-[1600px] mx-auto space-y-8">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h1 class="text-2xl font-semibold text-foreground mb-1">Team Summary Report</h1>
+                            <p class="text-sm text-muted-foreground" x-text="'Performance breakdown for ' + viewMonthName"></p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center bg-muted rounded-lg border border-border p-1">
+                                <button @click="prevMonth()" class="p-1 hover:bg-card rounded-md transition-colors text-muted-foreground hover:text-foreground"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                                <span class="px-4 text-xs font-medium text-foreground min-w-[120px] text-center" x-text="viewMonthName"></span>
+                                <button @click="nextMonth()" class="p-1 hover:bg-card rounded-md transition-colors text-muted-foreground hover:text-foreground"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <template x-for="team in calculateMonthlyStats()" :key="team.name">
+                            <div class="bg-card border border-border p-5 rounded-xl space-y-4">
+                                <div class="flex justify-between items-center">
+                                    <h3 class="font-semibold text-foreground" x-text="team.name"></h3>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary uppercase" x-text="team.workingDays + ' Working Days'"></span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div class="text-2xl font-bold text-foreground" x-text="team.attRate + '%'"></div>
+                                        <div class="text-[10px] text-muted-foreground uppercase">Attendance</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-2xl font-bold text-foreground" x-text="team.stdRate + '%'"></div>
+                                        <div class="text-[10px] text-muted-foreground uppercase">Standup</div>
+                                    </div>
+                                </div>
+                                <div class="pt-4 border-t border-border grid grid-cols-4 gap-2 text-center">
+                                    <div>
+                                        <div class="text-xs font-bold text-primary" x-text="team.wfh"></div>
+                                        <div class="text-[8px] text-muted-foreground uppercase">WFH</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-amber-500" x-text="team.late"></div>
+                                        <div class="text-[8px] text-muted-foreground uppercase">Late</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-orange-500" x-text="team.leave"></div>
+                                        <div class="text-[8px] text-muted-foreground uppercase">Leave</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-xs font-bold text-destructive" x-text="team.absent"></div>
+                                        <div class="text-[8px] text-muted-foreground uppercase">Abs</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div class="bg-card border border-border rounded-xl overflow-hidden">
+                        <div class="p-4 bg-muted/30 border-b border-border">
+                            <h3 class="text-sm font-semibold text-foreground">Monthly Member Breakdown</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-background/50 text-muted-foreground text-[10px] uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-6 py-3 font-semibold">Member</th>
+                                        <th class="px-6 py-3 font-semibold">Team</th>
+                                        <th class="px-6 py-3 font-semibold text-center">Att Rate</th>
+                                        <th class="px-6 py-3 font-semibold text-center">WFH</th>
+                                        <th class="px-6 py-3 font-semibold text-center">Late</th>
+                                        <th class="px-6 py-3 font-semibold text-center">Leave</th>
+                                        <th class="px-6 py-3 font-semibold text-center">Missed Std</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-border">
+                                    <template x-for="m in calculateMemberMonthlyStats()" :key="m.id">
+                                        <tr class="hover:bg-muted/30 transition-colors">
+                                            <td class="px-6 py-4 font-medium text-foreground" x-text="m.name"></td>
+                                            <td class="px-6 py-4 text-muted-foreground" x-text="m.team"></td>
+                                            <td class="px-6 py-4 text-center">
+                                                <span :class="m.attRate >= 90 ? 'text-emerald-400' : (m.attRate >= 75 ? 'text-amber-400' : 'text-destructive')" class="font-bold" x-text="m.attRate + '%'"></span>
+                                            </td>
+                                            <td class="px-6 py-4 text-center text-primary" x-text="m.wfh || '-'"></td>
+                                            <td class="px-6 py-4 text-center text-amber-500" x-text="m.late || '-'"></td>
+                                            <td class="px-6 py-4 text-center text-orange-500" x-text="m.leave || '-'"></td>
+                                            <td class="px-6 py-4 text-center text-destructive" x-text="m.missedSync || '-'"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 <div x-show="view === 'settings'" x-cloak x-transition:enter="transition opacity-200" class="max-w-2xl space-y-6">
                     <h1 class="text-2xl font-semibold text-foreground mb-6">Settings</h1>
                     
@@ -598,7 +687,8 @@
                 todayStats: { present: 0, late: 0, onLeave: 0, standup: 0, wfh: 0, workingCount: 0, attRate: 0, stdRate: 0 },
                 menu: [
                     { id: 'overview', label: 'Dashboard', icon: 'layout-grid' },
-                    { id: 'team', label: 'Team', icon: 'users' }
+                    { id: 'team', label: 'Team', icon: 'users' },
+                    { id: 'reports', label: 'Reports', icon: 'bar-chart-3' }
                 ],
 
                 async init() {
@@ -759,6 +849,98 @@
                         this.notify('Sync complete! Refreshing...');
                         setTimeout(() => window.location.reload(), 1500);
                     } catch (e) { console.error(e); this.notify('Sync failed'); }
+                },
+
+                calculateMonthlyStats() {
+                    const d = new Date(this.viewDate + 'T00:00:00');
+                    const month = d.getMonth(), year = d.getFullYear();
+                    const lastDay = new Date(year, month + 1, 0).getDate();
+                    const todayISO = new Date().toLocaleDateString('en-CA');
+                    
+                    const report = {};
+                    this.teams.forEach(t => report[t.name] = { attendance: 0, standup: 0, workingDays: 0, wfh: 0, late: 0, leave: 0, absent: 0 });
+                    
+                    for (let i = 1; i <= lastDay; i++) {
+                        const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                        if (iso > todayISO) continue;
+                        
+                        const dayIdx = new Date(iso + 'T00:00:00').getDay();
+                        const weekKey = this.getMonday(iso);
+                        
+                        this.members.forEach(m => {
+                            const days = (this.weeklyRosters[weekKey] && this.weeklyRosters[weekKey][m.id]) 
+                                         ? this.weeklyRosters[weekKey][m.id] 
+                                         : (m.defaultWorkingDays || [1,2,3,4,5]);
+                            
+                            if (days.includes(dayIdx)) {
+                                const teamName = m.team || (this.teams[0]?.name || 'AI Studio');
+                                if (!report[teamName]) return;
+                                
+                                report[teamName].workingDays++;
+                                const att = this.attendanceData.find(a => a.memberId === m.id && a.date === iso);
+                                const std = this.getStandupStatusForDate(m.id, iso);
+                                
+                                if (!att || att.status === 'Present' || att.status === 'WFH' || att.status === 'Late') {
+                                    report[teamName].attendance++;
+                                    if (att?.status === 'WFH') report[teamName].wfh++;
+                                    if (att?.status === 'Late') report[teamName].late++;
+                                } else {
+                                    if (att.status === 'Leave') report[teamName].leave++;
+                                    if (att.status === 'Absent') report[teamName].absent++;
+                                }
+                                
+                                if (std && (!att || att.status !== 'Leave')) report[teamName].standup++;
+                            }
+                        });
+                    }
+                    
+                    return Object.keys(report).map(name => ({
+                        name,
+                        ...report[name],
+                        attRate: report[name].workingDays > 0 ? Math.round((report[name].attendance / report[name].workingDays) * 100) : 0,
+                        stdRate: report[name].workingDays > 0 ? Math.round((report[name].standup / report[name].workingDays) * 100) : 0
+                    }));
+                },
+
+                getStandupStatusForDate(id, date) {
+                    const r = this.standupData.find(s => s.memberId === id && s.date === date);
+                    return r ? r.attended : true;
+                },
+
+                calculateMemberMonthlyStats() {
+                    const d = new Date(this.viewDate + 'T00:00:00');
+                    const month = d.getMonth(), year = d.getFullYear();
+                    const lastDay = new Date(year, month + 1, 0).getDate();
+                    const todayISO = new Date().toLocaleDateString('en-CA');
+                    
+                    return this.members.map(m => {
+                        const stats = { workingDays: 0, attended: 0, wfh: 0, late: 0, leave: 0, absent: 0, missedSync: 0 };
+                        for (let i = 1; i <= lastDay; i++) {
+                            const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                            if (iso > todayISO) continue;
+                            const dayIdx = new Date(iso + 'T00:00:00').getDay();
+                            const weekKey = this.getMonday(iso);
+                            const days = (this.weeklyRosters[weekKey] && this.weeklyRosters[weekKey][m.id]) 
+                                         ? this.weeklyRosters[weekKey][m.id] 
+                                         : (m.defaultWorkingDays || [1,2,3,4,5]);
+                            
+                            if (days.includes(dayIdx)) {
+                                stats.workingDays++;
+                                const att = this.attendanceData.find(a => a.memberId === m.id && a.date === iso);
+                                const std = this.getStandupStatusForDate(m.id, iso);
+                                if (!att || att.status === 'Present' || att.status === 'WFH' || att.status === 'Late') {
+                                    stats.attended++;
+                                    if (att?.status === 'WFH') stats.wfh++;
+                                    if (att?.status === 'Late') stats.late++;
+                                } else {
+                                    if (att.status === 'Leave') stats.leave++;
+                                    if (att.status === 'Absent') stats.absent++;
+                                }
+                                if (!std && (!att || att.status !== 'Leave')) stats.missedSync++;
+                            }
+                        }
+                        return { ...m, ...stats, attRate: stats.workingDays > 0 ? Math.round((stats.attended / stats.workingDays) * 100) : 0 };
+                    }).sort((a, b) => a.attRate - b.attRate);
                 },
 
                 refreshDashboard() { this.generateCalendar(); this.updateTodayStats(); },
