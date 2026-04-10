@@ -514,10 +514,33 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                 <template x-for="team in teams" :key="team.id">
                                     <div class="flex items-center justify-between p-3 bg-muted rounded-lg border border-border group">
-                                        <span class="text-sm font-medium text-foreground" x-text="team.name"></span>
-                                        <button @click="deleteTeam(team.id)" class="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                        </button>
+                                        <div class="flex-1 mr-2">
+                                            <template x-if="editingTeamId !== team.id">
+                                                <span class="text-sm font-medium text-foreground" x-text="team.name"></span>
+                                            </template>
+                                            <template x-if="editingTeamId === team.id">
+                                                <input type="text" x-model="team.name" 
+                                                       @keyup.enter="saveTeamName(team)"
+                                                       @keyup.escape="editingTeamId = null"
+                                                       class="w-full bg-background border border-primary/50 rounded px-2 py-1 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none"
+                                                       x-init="$el.focus()">
+                                            </template>
+                                        </div>
+                                        <div class="flex items-center gap-1">
+                                            <template x-if="editingTeamId !== team.id">
+                                                <button @click="editingTeamId = team.id; oldTeamName = team.name" class="p-1 text-muted-foreground hover:text-primary transition-colors">
+                                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                                </button>
+                                            </template>
+                                            <template x-if="editingTeamId === team.id">
+                                                <button @click="saveTeamName(team)" class="p-1 text-primary hover:text-primary/80 transition-colors">
+                                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                                </button>
+                                            </template>
+                                            <button @click="deleteTeam(team.id)" class="p-1 text-muted-foreground hover:text-destructive transition-colors">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </template>
                             </div>
@@ -690,6 +713,8 @@
                 statsMTD: { attendance: 0, standup: 0 },
                 viewMonthName: '',
                 newTeamName: '',
+                editingTeamId: null,
+                oldTeamName: '',
                 activePrompt: null, promptData: {}, toast: { show: false, message: '' }, calendarDays: [],
                 todayStats: { present: 0, late: 0, onLeave: 0, standup: 0, wfh: 0, workingCount: 0, attRate: 0, stdRate: 0 },
                 menu: [
@@ -705,6 +730,9 @@
                     this.$watch('view', (v) => {
                         this.searchQuery = '';
                         if(v === 'team') this.rosterViewDate = this.selectedDate;
+                        this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
+                    });
+                    this.$watch('editingTeamId', () => {
                         this.$nextTick(() => { if (window.lucide) lucide.createIcons(); });
                     });
                 },
@@ -819,6 +847,41 @@
                         this.notify('Team added');
                     } else {
                         this.notify('Failed to add team');
+                    }
+                },
+
+                async saveTeamName(team) {
+                    if (!team.name || !supabaseClient) return;
+                    const oldName = this.oldTeamName;
+                    
+                    try {
+                        const { error } = await supabaseClient.from('teams').update({ name: team.name }).eq('id', team.id);
+                        if (error) throw error;
+
+                        if (oldName && oldName !== team.name) {
+                            // Update all members belonging to this team in the local state
+                            this.members.forEach(m => {
+                                if (m.team === oldName) {
+                                    m.team = team.name;
+                                }
+                            });
+
+                            // Update in Supabase
+                            const { error: memberError } = await supabaseClient
+                                .from('members')
+                                .update({ team: team.name })
+                                .eq('team', oldName);
+                            
+                            if (memberError) console.error('Member Team Sync Error:', memberError);
+                        }
+                        
+                        this.editingTeamId = null;
+                        this.oldTeamName = '';
+                        this.saveData();
+                        this.notify('Team updated');
+                    } catch (e) {
+                        console.error('Team Update Error:', e);
+                        this.notify('Failed to update team');
                     }
                 },
 
