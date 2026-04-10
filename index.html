@@ -1024,7 +1024,10 @@
                     if(idx !== -1) this.attendanceData[idx] = { ...this.attendanceData[idx], status, ...extra }; 
                     else this.attendanceData.push({ date: this.selectedDate, memberId: id, status, ...extra });
                     
-                    if (supabaseClient) await supabaseClient.from('attendance').upsert(record);
+                    if (supabaseClient) {
+                        const { error } = await supabaseClient.from('attendance').upsert(record, { onConflict: 'date,member_id' });
+                        if (error) console.error('Attendance Sync Error:', error);
+                    }
                     this.refreshDashboard(); this.notify('Status updated');
                 },
 
@@ -1078,7 +1081,10 @@
                         this.standupData.push({ date: this.selectedDate, memberId: id, attended: false });
                         newAttended = false;
                     }
-                    if (supabaseClient) await supabaseClient.from('standups').upsert({ date: this.selectedDate, member_id: id, attended: newAttended });
+                    if (supabaseClient) {
+                        const { error } = await supabaseClient.from('standups').upsert({ date: this.selectedDate, member_id: id, attended: newAttended }, { onConflict: 'date,member_id' });
+                        if (error) console.error('Standup Sync Error:', error);
+                    }
                     this.refreshDashboard();
                 },
 
@@ -1119,14 +1125,14 @@
                         this.promptData = { 
                             id: member.id, 
                             name: member.name, 
-                            team: member.team || 'AI Studio',
+                            team: member.team || (this.teams[0]?.name || 'AI Studio'),
                             workingDays: [...this.getWorkingDays(member.id)] 
                         };
                     } else {
                         this.promptData = { 
                             id: null, 
                             name: '', 
-                            team: 'AI Studio', 
+                            team: this.teams[0]?.name || 'AI Studio', 
                             workingDays: [1,2,3,4,5] 
                         };
                     }
@@ -1144,7 +1150,10 @@
                     } else {
                         this.weeklyRosters[weekKey][memberId].push(day);
                     }
-                    if (supabaseClient) await supabaseClient.from('weekly_rosters').upsert({ week_key: weekKey, member_id: memberId, working_days: this.weeklyRosters[weekKey][memberId] });
+                    if (supabaseClient) {
+                        const { error } = await supabaseClient.from('weekly_rosters').upsert({ week_key: weekKey, member_id: memberId, working_days: this.weeklyRosters[weekKey][memberId] }, { onConflict: 'week_key,member_id' });
+                        if (error) console.error('Roster Sync Error:', error);
+                    }
                     this.refreshDashboard();
                 },
                 async saveMember() { 
@@ -1162,7 +1171,8 @@
                         await supabaseClient.from('members').upsert({ id: mId, name: this.promptData.name, team: this.promptData.team, default_working_days: this.promptData.workingDays });
                         if(!this.weeklyRosters[weekKey]) this.weeklyRosters[weekKey] = {};
                         this.weeklyRosters[weekKey][mId] = [...this.promptData.workingDays];
-                        await supabaseClient.from('weekly_rosters').upsert({ week_key: weekKey, member_id: mId, working_days: this.promptData.workingDays });
+                        const { error } = await supabaseClient.from('weekly_rosters').upsert({ week_key: weekKey, member_id: mId, working_days: this.promptData.workingDays }, { onConflict: 'week_key,member_id' });
+                        if (error) console.error('Roster Save Error:', error);
                     }
                     this.refreshDashboard(); this.activePrompt = null; this.notify('Member saved'); 
                 },
@@ -1175,7 +1185,8 @@
                         this.weeklyRosters[currentWeek] = JSON.parse(JSON.stringify(this.weeklyRosters[lastWeekKey]));
                         if (supabaseClient) {
                             const entries = Object.entries(this.weeklyRosters[currentWeek]).map(([mid, days]) => ({ week_key: currentWeek, member_id: mid, working_days: days }));
-                            await supabaseClient.from('weekly_rosters').upsert(entries);
+                            const { error } = await supabaseClient.from('weekly_rosters').upsert(entries, { onConflict: 'week_key,member_id' });
+                            if (error) console.error('Roster Copy Error:', error);
                         }
                         this.refreshDashboard();
                         this.notify('Copied previous week schedule');
