@@ -118,9 +118,17 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <div class="flex items-center bg-card rounded-lg border border-border px-3 py-1.5 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
-                        <i data-lucide="calendar" class="w-4 h-4 text-muted-foreground"></i>
-                        <input type="date" x-model="selectedDate" @change="syncData()" class="bg-transparent border-none text-sm px-2 text-foreground outline-none cursor-pointer">
+                    <div class="flex items-center bg-card rounded-lg border border-border p-1">
+                        <button @click="prevDay()" class="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground" title="Previous Day">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <div class="flex items-center px-1 focus-within:ring-0 transition-all">
+                            <i data-lucide="calendar" class="w-4 h-4 text-muted-foreground"></i>
+                            <input type="date" x-model="selectedDate" min="2026-04-01" @change="syncData()" class="bg-transparent border-none text-sm px-2 text-foreground outline-none cursor-pointer">
+                        </div>
+                        <button @click="nextDay()" class="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground" title="Next Day">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -1087,15 +1095,13 @@
                         const isFuture = iso > todayISO, stats = this.calculateStatsForDate(iso);
                         if (!isFuture && stats.workingCount > 0) { mtdAtt += stats.attRate; mtdStd += stats.stdRate; activeDays++; }
                         
-                        days.push({ 
-                            dayNum: i, isCurrentMonth: true, isToday: iso === todayISO, 
-                            isSelected: iso === this.selectedDate, isoDate: iso, 
-                            attendanceRate: stats.attRate, standupRate: stats.stdRate, 
-                            isWeekend: [0,6].includes(new Date(iso + 'T00:00:00').getDay()), 
+                        days.push({
+                            dayNum: i, isCurrentMonth: true, isToday: iso === todayISO,
+                            isSelected: iso === this.selectedDate, isoDate: iso,
+                            attendanceRate: stats.attRate, standupRate: stats.stdRate,
                             isFuture, stats,
                             formatted: new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                        });
-                    }
+                        });                    }
                     this.calendarDays = days;
                     this.statsMTD = { attendance: activeDays > 0 ? Math.round(mtdAtt / activeDays) : 0, standup: activeDays > 0 ? Math.round(mtdStd / activeDays) : 0 };
                 },
@@ -1185,12 +1191,29 @@
                 getStandupStatus(id) { const r = this.standupData.find(s => s.memberId === id && s.date === this.selectedDate); return r ? r.attended : true; },
 
                 setDate(iso) { 
-                    this.selectedDate = iso; 
-                    this.refreshDashboard(); 
+                    this.selectedDate = iso;
+                    this.refreshDashboard();
                     document.querySelector('main').scrollTo({ top: 0, behavior: 'smooth' });
                 },
-                syncData() { this.viewDate = this.selectedDate; this.refreshDashboard(); },
-                goToday() { this.setDate(new Date().toLocaleDateString('en-CA')); this.viewDate = this.selectedDate; this.refreshDashboard(); },
+                prevDay() {
+                    const d = new Date(this.selectedDate + 'T00:00:00');
+                    d.setDate(d.getDate() - 1);
+                    const newDate = d.toLocaleDateString('en-CA');
+                    if (newDate >= '2026-04-01') {
+                        this.setDate(newDate);
+                        this.viewDate = newDate;
+                    } else {
+                        this.notify('Tracker starts from April 1st, 2026');
+                    }
+                },
+                nextDay() {
+                    const d = new Date(this.selectedDate + 'T00:00:00');
+                    d.setDate(d.getDate() + 1);
+                    const newDate = d.toLocaleDateString('en-CA');
+                    this.setDate(newDate);
+                    this.viewDate = newDate;
+                },
+                syncData() { this.viewDate = this.selectedDate; this.refreshDashboard(); },                goToday() { this.setDate(new Date().toLocaleDateString('en-CA')); this.viewDate = this.selectedDate; this.refreshDashboard(); },
                 prevMonth() { const d = new Date(this.viewDate + 'T00:00:00'); d.setMonth(d.getMonth()-1); this.viewDate = d.toLocaleDateString('en-CA'); this.refreshDashboard(); },
                 nextMonth() { const d = new Date(this.viewDate + 'T00:00:00'); d.setMonth(d.getMonth()+1); this.viewDate = d.toLocaleDateString('en-CA'); this.refreshDashboard(); },
                 
