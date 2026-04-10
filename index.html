@@ -1214,10 +1214,31 @@
                     this.viewDate = newDate;
                 },
                 syncData() { this.viewDate = this.selectedDate; this.refreshDashboard(); },                goToday() { this.setDate(new Date().toLocaleDateString('en-CA')); this.viewDate = this.selectedDate; this.refreshDashboard(); },
-                prevMonth() { const d = new Date(this.viewDate + 'T00:00:00'); d.setMonth(d.getMonth()-1); this.viewDate = d.toLocaleDateString('en-CA'); this.refreshDashboard(); },
+                prevMonth() { 
+                    const d = new Date(this.viewDate + 'T00:00:00'); 
+                    d.setMonth(d.getMonth()-1); 
+                    const newDate = d.toLocaleDateString('en-CA');
+                    if (newDate >= '2026-04-01' || (d.getMonth() === 3 && d.getFullYear() === 2026)) {
+                        this.viewDate = newDate; 
+                        this.refreshDashboard(); 
+                    } else {
+                        this.notify('Tracker starts from April 1st, 2026');
+                    }
+                },
                 nextMonth() { const d = new Date(this.viewDate + 'T00:00:00'); d.setMonth(d.getMonth()+1); this.viewDate = d.toLocaleDateString('en-CA'); this.refreshDashboard(); },
                 
-                prevWeek() { const d = new Date(this.rosterViewDate + 'T00:00:00'); d.setDate(d.getDate()-7); this.rosterViewDate = d.toLocaleDateString('en-CA'); },
+                prevWeek() { 
+                    const d = new Date(this.rosterViewDate + 'T00:00:00'); 
+                    d.setDate(d.getDate()-7); 
+                    const newDate = d.toLocaleDateString('en-CA');
+                    const weekMonday = this.getMonday(newDate);
+                    // April 1st 2026 is a Wednesday. The Monday of that week is March 30th 2026.
+                    if (weekMonday >= '2026-03-30') {
+                        this.rosterViewDate = newDate; 
+                    } else {
+                        this.notify('Tracker starts from April 1st, 2026');
+                    }
+                },
                 nextWeek() { const d = new Date(this.rosterViewDate + 'T00:00:00'); d.setDate(d.getDate()+7); this.rosterViewDate = d.toLocaleDateString('en-CA'); },
 
                 async sendSlackStandup() {
