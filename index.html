@@ -109,7 +109,7 @@
                         <i data-lucide="menu" class="w-4 h-4"></i>
                     </button>
                     <div class="flex items-center gap-3">
-                        <h2 class="text-sm font-medium text-foreground" x-text="menu.find(m => m.id === view)?.label || 'Settings'"></h2>
+                        <h2 class="text-sm font-medium text-foreground" x-text="menu.find(m => m.id === view)?.label || (view.charAt(0).toUpperCase() + view.slice(1))"></h2>
                         <span class="text-muted-foreground">/</span>
                         <div class="flex items-center gap-2">
                             <span class="text-sm text-muted-foreground" x-text="new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })"></span>
@@ -499,6 +499,8 @@
                             </table>
                         </div>
                     </div>
+                </div>
+
                 <div x-show="view === 'settings'" x-cloak x-transition:enter="transition opacity-200" class="max-w-2xl space-y-6">
                     <h1 class="text-2xl font-semibold text-foreground mb-6">Settings</h1>
                     
@@ -524,9 +526,12 @@
 
                     <div class="bg-card border border-border p-6 rounded-xl space-y-4">
                         <h3 class="text-base font-semibold text-foreground border-b border-border pb-2 mb-4">Integrations</h3>
-                        <div>
-                            <label class="block text-sm text-muted-foreground mb-1.5">Slack Webhook URL</label>
-                            <input type="text" x-model="settings.slackWebhookUrl" placeholder="https://hooks.slack.com/..." class="w-full bg-muted border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-muted-foreground/50">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm text-muted-foreground mb-1.5">Slack Webhook URL</label>
+                                <input type="text" x-model="settings.slackWebhookUrl" placeholder="https://hooks.slack.com/..." class="w-full bg-muted border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all placeholder:text-muted-foreground/50">
+                            </div>
+                            <button @click="saveData()" class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">Save Integration</button>
                         </div>
                     </div>
 
@@ -683,6 +688,8 @@
                 standupData: [],
                 settings: { slackWebhookUrl: '' },
                 statsMTD: { attendance: 0, standup: 0 },
+                viewMonthName: '',
+                newTeamName: '',
                 activePrompt: null, promptData: {}, toast: { show: false, message: '' }, calendarDays: [],
                 todayStats: { present: 0, late: 0, onLeave: 0, standup: 0, wfh: 0, workingCount: 0, attRate: 0, stdRate: 0 },
                 menu: [
@@ -759,6 +766,20 @@
                 },
 
                 async loadData() {
+                    // Load from local storage first
+                    const local = localStorage.getItem('aitech_v8');
+                    if (local) {
+                        try {
+                            const d = JSON.parse(local);
+                            if (d.teams) this.teams = d.teams;
+                            if (d.members) this.members = d.members;
+                            if (d.attendance) this.attendanceData = d.attendance;
+                            if (d.standup) this.standupData = d.standup;
+                            if (d.weeklyRosters) this.weeklyRosters = d.weeklyRosters;
+                            if (d.settings) this.settings = d.settings;
+                        } catch (e) { console.error('Local Load Error:', e); }
+                    }
+
                     if (!supabaseClient) return;
                     try {
                         const [m, a, s, r, set, t] = await Promise.all([
@@ -770,20 +791,19 @@
                             supabaseClient.from('teams').select('*').order('name')
                         ]);
 
-                        if (t.data) this.teams = t.data;
-                        if (m.data) this.members = m.data.map(mem => ({...mem, defaultWorkingDays: mem.default_working_days}));
-                        if (a.data) this.attendanceData = a.data.map(att => ({...att, memberId: att.member_id, loginTime: att.login_time, leaveType: att.leave_type}));
-                        if (s.data) this.standupData = s.data.map(std => ({...std, memberId: std.member_id}));
+                        if (t.data && t.data.length) this.teams = t.data;
+                        if (m.data && m.data.length) this.members = m.data.map(mem => ({...mem, defaultWorkingDays: mem.default_working_days}));
+                        if (a.data && a.data.length) this.attendanceData = a.data.map(att => ({...att, memberId: att.member_id, loginTime: att.login_time, leaveType: att.leave_type}));
+                        if (s.data && s.data.length) this.standupData = s.data.map(std => ({...std, memberId: std.member_id}));
                         
-                        // Reconstruct weeklyRosters object
-                        const rosters = {};
-                        if (r.data) {
+                        if (r.data && r.data.length) {
+                            const rosters = {};
                             r.data.forEach(item => {
                                 if (!rosters[item.week_key]) rosters[item.week_key] = {};
                                 rosters[item.week_key][item.member_id] = item.working_days;
                             });
+                            this.weeklyRosters = rosters;
                         }
-                        this.weeklyRosters = rosters;
                         if (set.data) this.settings.slackWebhookUrl = set.data.slack_webhook_url;
 
                     } catch (e) { console.error('Supabase Load Error:', e); }
@@ -795,6 +815,7 @@
                     if (!error && data) {
                         this.teams.push(data[0]);
                         this.teams.sort((a, b) => a.name.localeCompare(b.name));
+                        this.saveData();
                         this.notify('Team added');
                     } else {
                         this.notify('Failed to add team');
@@ -806,16 +827,27 @@
                     const { error } = await supabaseClient.from('teams').delete().eq('id', id);
                     if (!error) {
                         this.teams = this.teams.filter(t => t.id !== id);
+                        this.saveData();
                         this.notify('Team deleted');
                     }
                 },
 
                 async saveData() {
-                    // This function now primarily handles syncing settings or bulk member updates if needed
-                    if (!supabaseClient) return;
-                    try {
-                        await supabaseClient.from('app_settings').upsert({ id: 1, slack_webhook_url: this.settings.slack_webhook_url });
-                    } catch (e) { console.error('Supabase Save Error:', e); }
+                    const data = {
+                        members: this.members.map(m => ({...m, defaultWorkingDays: m.defaultWorkingDays})),
+                        teams: this.teams,
+                        attendance: this.attendanceData.map(a => ({...a, memberId: a.memberId, loginTime: a.loginTime, leaveType: a.leaveType})),
+                        standup: this.standupData.map(s => ({...s, memberId: s.memberId})),
+                        weeklyRosters: this.weeklyRosters,
+                        settings: this.settings
+                    };
+                    localStorage.setItem('aitech_v8', JSON.stringify(data));
+
+                    if (supabaseClient) {
+                        try {
+                            await supabaseClient.from('app_settings').upsert({ id: 1, slack_webhook_url: this.settings.slack_webhook_url });
+                        } catch (e) { console.error('Supabase Save Error:', e); }
+                    }
                     this.refreshDashboard();
                 },
 
@@ -1028,15 +1060,14 @@
                         const { error } = await supabaseClient.from('attendance').upsert(record, { onConflict: 'date,member_id' });
                         if (error) console.error('Attendance Sync Error:', error);
                     }
-                    this.refreshDashboard(); this.notify('Status updated');
+                    this.saveData(); this.notify('Status updated');
                 },
 
                 async resetStatus(id) { 
                     this.attendanceData = this.attendanceData.filter(a => !(a.memberId === id && a.date === this.selectedDate)); 
                     if (supabaseClient) await supabaseClient.from('attendance').delete().match({ date: this.selectedDate, member_id: id });
-                    this.refreshDashboard(); this.notify('Status reset to Present'); 
-                },
-                openLatePrompt(id) { this.activePrompt = 'late'; this.promptData = { memberId: id, loginTime: '09:30' }; },
+                    this.saveData(); this.notify('Status reset to Present');
+                },                openLatePrompt(id) { this.activePrompt = 'late'; this.promptData = { memberId: id, loginTime: '09:30' }; },
                 saveLate() { this.markStatus(this.promptData.memberId, 'Late', { loginTime: this.promptData.loginTime }); this.activePrompt = 'quickUpdate'; },
                 openLeavePrompt(id) { this.activePrompt = 'leave'; this.promptData = { memberId: id, leaveType: 'Casual Leave' }; },
                 saveLeave() { this.markStatus(this.promptData.memberId, 'Leave', { leaveType: this.promptData.leaveType }); this.activePrompt = 'quickUpdate'; },
@@ -1085,7 +1116,7 @@
                         const { error } = await supabaseClient.from('standups').upsert({ date: this.selectedDate, member_id: id, attended: newAttended }, { onConflict: 'date,member_id' });
                         if (error) console.error('Standup Sync Error:', error);
                     }
-                    this.refreshDashboard();
+                    this.saveData();
                 },
 
                 getStandupStatus(id) { const r = this.standupData.find(s => s.memberId === id && s.date === this.selectedDate); return r ? r.attended : true; },
@@ -1154,7 +1185,7 @@
                         const { error } = await supabaseClient.from('weekly_rosters').upsert({ week_key: weekKey, member_id: memberId, working_days: this.weeklyRosters[weekKey][memberId] }, { onConflict: 'week_key,member_id' });
                         if (error) console.error('Roster Sync Error:', error);
                     }
-                    this.refreshDashboard();
+                    this.saveData();
                 },
                 async saveMember() { 
                     const weekKey = this.getMonday(this.rosterViewDate);
@@ -1174,7 +1205,7 @@
                         const { error } = await supabaseClient.from('weekly_rosters').upsert({ week_key: weekKey, member_id: mId, working_days: this.promptData.workingDays }, { onConflict: 'week_key,member_id' });
                         if (error) console.error('Roster Save Error:', error);
                     }
-                    this.refreshDashboard(); this.activePrompt = null; this.notify('Member saved'); 
+                    this.saveData(); this.activePrompt = null; this.notify('Member saved'); 
                 },
                 async copyLastWeek() {
                     const currentWeek = this.getMonday(this.rosterViewDate);
@@ -1188,7 +1219,7 @@
                             const { error } = await supabaseClient.from('weekly_rosters').upsert(entries, { onConflict: 'week_key,member_id' });
                             if (error) console.error('Roster Copy Error:', error);
                         }
-                        this.refreshDashboard();
+                        this.saveData();
                         this.notify('Copied previous week schedule');
                     } else {
                         this.notify('No previous week schedule found');
@@ -1198,7 +1229,7 @@
                     if(confirm('Delete member?')) { 
                         this.members = this.members.filter(m => m.id !== id); 
                         if (supabaseClient) await supabaseClient.from('members').delete().eq('id', id);
-                        this.refreshDashboard();
+                        this.saveData();
                     } 
                 },
                 exportData() { const blob = new Blob([localStorage.getItem('aitech_v8')], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'team_tracker_backup.json'; a.click(); },
