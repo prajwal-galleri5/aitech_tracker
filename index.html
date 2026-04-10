@@ -206,11 +206,11 @@
                     <div class="space-y-8">
                         <h3 class="text-lg font-semibold text-foreground border-b border-border pb-2">Today's Status</h3>
                         
-                        <template x-for="teamName in ['AI Studio', 'Infra']" :key="teamName">
-                            <div x-show="getFilteredMembersByTeam(teamName).length > 0" class="space-y-4">
-                                <h4 class="text-sm font-medium text-muted-foreground uppercase tracking-widest" x-text="teamName"></h4>
+                        <template x-for="team in teams" :key="team.id">
+                            <div x-show="getFilteredMembersByTeam(team.name).length > 0" class="space-y-4">
+                                <h4 class="text-sm font-medium text-muted-foreground uppercase tracking-widest" x-text="team.name"></h4>
                                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                                    <template x-for="member in getFilteredMembersByTeam(teamName)" :key="member.id">
+                                    <template x-for="member in getFilteredMembersByTeam(team.name)" :key="member.id">
                                         <div class="bg-card border rounded-xl p-4 hover:border-primary/50 cursor-pointer transition-colors"
                                              :class="getMemberStatusBorder(member.id)"
                                              @click="openQuickUpdate(member.id)">
@@ -341,11 +341,11 @@
                     </div>
 
                     <div class="space-y-8 mt-6">
-                        <template x-for="teamName in ['AI Studio', 'Infra']" :key="teamName">
-                            <div x-show="getFilteredMembersByTeam(teamName).length > 0" class="space-y-4">
-                                <h2 class="text-lg font-semibold text-foreground border-b border-border pb-2" x-text="teamName"></h2>
+                        <template x-for="team in teams" :key="team.id">
+                            <div x-show="getFilteredMembersByTeam(team.name).length > 0" class="space-y-4">
+                                <h2 class="text-lg font-semibold text-foreground border-b border-border pb-2" x-text="team.name"></h2>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                                    <template x-for="member in getFilteredMembersByTeam(teamName)" :key="member.id">
+                                    <template x-for="member in getFilteredMembersByTeam(team.name)" :key="member.id">
                                         <div class="bg-card border border-border p-4 rounded-xl transition-colors hover:border-primary/30 group">
                                             <div class="flex justify-between items-start mb-3">
                                                 <div class="cursor-pointer group/name truncate pr-2" @click="openMemberModal(member)">
@@ -382,69 +382,29 @@
                         <h3 class="text-lg font-semibold text-foreground mb-4">Work Distribution</h3>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             
-                            <div class="bg-card border border-border rounded-xl flex flex-col overflow-hidden">
-                                <div class="p-4 bg-muted/30 border-b border-border">
-                                    <h4 class="text-sm font-semibold text-foreground">Standard (Mon-Fri)</h4>
-                                </div>
-                                <div class="grid grid-cols-2 divide-x divide-border flex-1">
-                                    <div class="flex flex-col">
-                                        <div class="flex justify-between items-center px-4 py-2.5 border-b border-border/50 bg-background/30">
-                                            <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI Studio</span>
-                                            <div class="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-primary bg-primary/10 rounded" x-text="getScheduleDistribution().monFri.aiStudio.length"></div>
-                                        </div>
-                                        <div class="p-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                            <template x-for="name in getScheduleDistribution().monFri.aiStudio" :key="name">
-                                                <div class="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors cursor-default truncate" x-text="name"></div>
-                                            </template>
-                                            <div x-show="getScheduleDistribution().monFri.aiStudio.length === 0" class="p-4 text-xs text-muted-foreground text-center italic">None</div>
-                                        </div>
+                            <template x-for="scheduleType in ['monFri', 'wedSun']" :key="scheduleType">
+                                <div class="bg-card border border-border rounded-xl flex flex-col overflow-hidden">
+                                    <div class="p-4 bg-muted/30 border-b border-border">
+                                        <h4 class="text-sm font-semibold text-foreground" x-text="scheduleType === 'monFri' ? 'Standard (Mon-Fri)' : 'Weekend Active (Wed-Sun)'"></h4>
                                     </div>
-                                    <div class="flex flex-col">
-                                        <div class="flex justify-between items-center px-4 py-2.5 border-b border-border/50 bg-background/30">
-                                            <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Infra</span>
-                                            <div class="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-primary bg-primary/10 rounded" x-text="getScheduleDistribution().monFri.infra.length"></div>
-                                        </div>
-                                        <div class="p-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                            <template x-for="name in getScheduleDistribution().monFri.infra" :key="name">
-                                                <div class="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors cursor-default truncate" x-text="name"></div>
-                                            </template>
-                                            <div x-show="getScheduleDistribution().monFri.infra.length === 0" class="p-4 text-xs text-muted-foreground text-center italic">None</div>
-                                        </div>
+                                    <div class="grid divide-x divide-border flex-1" :class="'grid-cols-' + Math.min(teams.length, 3)">
+                                        <template x-for="team in teams" :key="team.id">
+                                            <div class="flex flex-col">
+                                                <div class="flex justify-between items-center px-4 py-2.5 border-b border-border/50 bg-background/30">
+                                                    <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate mr-2" x-text="team.name"></span>
+                                                    <div class="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-primary bg-primary/10 rounded" x-text="getScheduleDistribution()[team.name][scheduleType].length"></div>
+                                                </div>
+                                                <div class="p-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                                                    <template x-for="name in getScheduleDistribution()[team.name][scheduleType]" :key="name">
+                                                        <div class="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors cursor-default truncate" x-text="name"></div>
+                                                    </template>
+                                                    <div x-show="getScheduleDistribution()[team.name][scheduleType].length === 0" class="p-4 text-xs text-muted-foreground text-center italic">None</div>
+                                                </div>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
-                            </div>
-
-                            <div class="bg-card border border-border rounded-xl flex flex-col overflow-hidden">
-                                <div class="p-4 bg-muted/30 border-b border-border">
-                                    <h4 class="text-sm font-semibold text-foreground">Weekend Active (Wed-Sun)</h4>
-                                </div>
-                                <div class="grid grid-cols-2 divide-x divide-border flex-1">
-                                    <div class="flex flex-col">
-                                        <div class="flex justify-between items-center px-4 py-2.5 border-b border-border/50 bg-background/30">
-                                            <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">AI Studio</span>
-                                            <div class="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-primary bg-primary/10 rounded" x-text="getScheduleDistribution().wedSun.aiStudio.length"></div>
-                                        </div>
-                                        <div class="p-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                            <template x-for="name in getScheduleDistribution().wedSun.aiStudio" :key="name">
-                                                <div class="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors cursor-default truncate" x-text="name"></div>
-                                            </template>
-                                            <div x-show="getScheduleDistribution().wedSun.aiStudio.length === 0" class="p-4 text-xs text-muted-foreground text-center italic">None</div>
-                                        </div>
-                                    </div>
-                                    <div class="flex flex-col">
-                                        <div class="flex justify-between items-center px-4 py-2.5 border-b border-border/50 bg-background/30">
-                                            <span class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Infra</span>
-                                            <div class="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-bold text-primary bg-primary/10 rounded" x-text="getScheduleDistribution().wedSun.infra.length"></div>
-                                        </div>
-                                        <div class="p-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                                            <template x-for="name in getScheduleDistribution().wedSun.infra" :key="name">
-                                                <div class="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors cursor-default truncate" x-text="name"></div>
-                                            </template>
-                                            <div x-show="getScheduleDistribution().wedSun.infra.length === 0" class="p-4 text-xs text-muted-foreground text-center italic">None</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            </template>
                             
                         </div>
                     </div>
@@ -453,6 +413,26 @@
                 <div x-show="view === 'settings'" x-cloak x-transition:enter="transition opacity-200" class="max-w-2xl space-y-6">
                     <h1 class="text-2xl font-semibold text-foreground mb-6">Settings</h1>
                     
+                    <div class="bg-card border border-border p-6 rounded-xl space-y-4">
+                        <h3 class="text-base font-semibold text-foreground border-b border-border pb-2 mb-4">Team Management</h3>
+                        <div class="space-y-4">
+                            <div class="flex gap-2">
+                                <input type="text" x-model="newTeamName" placeholder="New team name..." class="flex-1 bg-muted border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all">
+                                <button @click="addTeam(newTeamName); newTeamName = ''" class="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">Add Team</button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <template x-for="team in teams" :key="team.id">
+                                    <div class="flex items-center justify-between p-3 bg-muted rounded-lg border border-border group">
+                                        <span class="text-sm font-medium text-foreground" x-text="team.name"></span>
+                                        <button @click="deleteTeam(team.id)" class="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="bg-card border border-border p-6 rounded-xl space-y-4">
                         <h3 class="text-base font-semibold text-foreground border-b border-border pb-2 mb-4">Integrations</h3>
                         <div>
@@ -560,9 +540,10 @@
                         </div>
                         <div>
                             <label class="block text-xs text-muted-foreground mb-1.5">Team</label>
-                            <div class="flex gap-2">
-                                <button @click="promptData.team = 'AI Studio'" :class="promptData.team === 'AI Studio' ? 'bg-primary/10 text-primary border-primary/50' : 'bg-muted border-border text-muted-foreground hover:bg-border'" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-colors">AI Studio</button>
-                                <button @click="promptData.team = 'Infra'" :class="promptData.team === 'Infra' ? 'bg-primary/10 text-primary border-primary/50' : 'bg-muted border-border text-muted-foreground hover:bg-border'" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-colors">Infra</button>
+                            <div class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scrollbar p-1">
+                                <template x-for="team in teams" :key="team.id">
+                                    <button @click="promptData.team = team.name" :class="promptData.team === team.name ? 'bg-primary/10 text-primary border-primary/50' : 'bg-muted border-border text-muted-foreground hover:bg-border'" class="py-2 px-3 rounded-lg text-xs font-medium border transition-colors truncate" x-text="team.name"></button>
+                                </template>
                             </div>
                         </div>
                         <div>
@@ -607,6 +588,7 @@
                 sidebarOpen: true,
                 searchQuery: '',
                 members: [], // Populated from Supabase
+                teams: [], // Populated from Supabase
                 weeklyRosters: {}, 
                 attendanceData: [],
                 standupData: [],
@@ -656,28 +638,31 @@
                 },
 
                 getFilteredMembersByTeam(teamName) {
-                    return this.getFilteredMembers().filter(m => (m.team || 'AI Studio') === teamName);
+                    return this.getFilteredMembers().filter(m => (m.team || this.teams[0]?.name || 'AI Studio') === teamName);
                 },
 
                 getScheduleDistribution() {
-                    const lists = { 
-                        monFri: { aiStudio: [], infra: [] }, 
-                        wedSun: { aiStudio: [], infra: [] } 
-                    };
+                    const lists = {};
+                    this.teams.forEach(t => {
+                        lists[t.name] = { monFri: [], wedSun: [] };
+                    });
+
                     this.members.forEach(m => {
                         const days = this.getWorkingDays(m.id);
-                        const teamKey = (m.team === 'Infra') ? 'infra' : 'aiStudio';
+                        const teamName = m.team || (this.teams[0]?.name || 'AI Studio');
                         
+                        if (!lists[teamName]) return;
+
                         const worksMonFri = [1,2,3,4,5].every(d => days.includes(d));
                         const worksWedSun = [3,4,5,6,0].every(d => days.includes(d));
                         
-                        if (worksMonFri) lists.monFri[teamKey].push(m.name);
-                        if (worksWedSun) lists.wedSun[teamKey].push(m.name);
+                        if (worksMonFri) lists[teamName].monFri.push(m.name);
+                        if (worksWedSun) lists[teamName].wedSun.push(m.name);
                     });
                     
-                    ['monFri', 'wedSun'].forEach(schedule => {
-                        lists[schedule].aiStudio.sort((a, b) => a.localeCompare(b));
-                        lists[schedule].infra.sort((a, b) => a.localeCompare(b));
+                    Object.keys(lists).forEach(t => {
+                        lists[t].monFri.sort((a, b) => a.localeCompare(b));
+                        lists[t].wedSun.sort((a, b) => a.localeCompare(b));
                     });
                     
                     return lists;
@@ -686,14 +671,16 @@
                 async loadData() {
                     if (!supabaseClient) return;
                     try {
-                        const [m, a, s, r, set] = await Promise.all([
+                        const [m, a, s, r, set, t] = await Promise.all([
                             supabaseClient.from('members').select('*'),
                             supabaseClient.from('attendance').select('*'),
                             supabaseClient.from('standups').select('*'),
                             supabaseClient.from('weekly_rosters').select('*'),
-                            supabaseClient.from('app_settings').select('*').single()
+                            supabaseClient.from('app_settings').select('*').single(),
+                            supabaseClient.from('teams').select('*').order('name')
                         ]);
 
+                        if (t.data) this.teams = t.data;
                         if (m.data) this.members = m.data.map(mem => ({...mem, defaultWorkingDays: mem.default_working_days}));
                         if (a.data) this.attendanceData = a.data.map(att => ({...att, memberId: att.member_id, loginTime: att.login_time, leaveType: att.leave_type}));
                         if (s.data) this.standupData = s.data.map(std => ({...std, memberId: std.member_id}));
@@ -710,6 +697,27 @@
                         if (set.data) this.settings.slackWebhookUrl = set.data.slack_webhook_url;
 
                     } catch (e) { console.error('Supabase Load Error:', e); }
+                },
+
+                async addTeam(name) {
+                    if (!name || !supabaseClient) return;
+                    const { data, error } = await supabaseClient.from('teams').insert({ name }).select();
+                    if (!error && data) {
+                        this.teams.push(data[0]);
+                        this.teams.sort((a, b) => a.name.localeCompare(b.name));
+                        this.notify('Team added');
+                    } else {
+                        this.notify('Failed to add team');
+                    }
+                },
+
+                async deleteTeam(id) {
+                    if (!confirm('Delete this team? Members in this team will remain but team grouping will be lost.') || !supabaseClient) return;
+                    const { error } = await supabaseClient.from('teams').delete().eq('id', id);
+                    if (!error) {
+                        this.teams = this.teams.filter(t => t.id !== id);
+                        this.notify('Team deleted');
+                    }
                 },
 
                 async saveData() {
